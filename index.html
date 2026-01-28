@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LendIt - Aplikasi Peminjaman Alat ATPH</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --primary-glow: rgba(0, 121, 107, 0.3);
+            --accent-glow: rgba(255, 235, 59, 0.2);
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #004d40, #000);
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6, p, span, label, td, th {
+            color: #ffffff;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: -10%; left: -10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(50px);
+        }
+
+        .container-fluid { padding: 20px; }
+        
+        .section { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .section.active { 
+            display: block; 
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .login-box {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            width: 850px;
+            max-width: 100%;
+            min-height: 530px;
+            margin: 5vh auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 25px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-10px);
+            border-color: #ffeb3b;
+            box-shadow: 0 15px 35px rgba(255, 235, 59, 0.1);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .btn-modern {
+            background: linear-gradient(45deg, #ffeb3b, #ffc107);
+            color: #000000 !important; 
+            border: none; border-radius: 50px;
+            padding: 12px 35px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; transition: 0.4s;
+            position: relative;
+        }
+
+        .btn-modern:hover { 
+            transform: scale(1.05) rotate(-1deg); 
+            box-shadow: 0 10px 20px rgba(255, 193, 7, 0.3);
+            color: #000000 !important;
+        }
+
+        #login-btn-container {
+            position: relative;
+            height: 60px;
+            width: 100%;
+        }
+        #login-btn {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+
+        .btn-loading {
+            color: transparent !important;
+            pointer-events: none;
+        }
+
+        .btn-loading::after {
+            content: "";
+            position: absolute;
+            width: 20px; height: 20px;
+            top: 50%; left: 50%;
+            margin: -10px 0 0 -10px;
+            border: 3px solid rgba(0,0,0,0.2);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .chart-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+        .chart-scroll-area {
+            min-width: 1000px;
+            height: 250px;
+            position: relative;
+        }
+        .chart-wrapper::-webkit-scrollbar { height: 6px; }
+        .chart-wrapper::-webkit-scrollbar-thumb { background: rgba(255, 235, 59, 0.3); border-radius: 10px; }
+
+        .navbar { 
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(15px); 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: none; 
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: #ffffff !important;
+            border-radius: 12px;
+        }
+
+        .form-control::placeholder { color: rgba(255,255,255,0.6) !important; }
+
+        .text-yellow { color: #ffeb3b !important; text-shadow: 0 0 10px rgba(255, 235, 59, 0.3); }
+        .text-green { color: #4db6ac !important; }
+        
+        .table { --bs-table-bg: transparent; color: white !important; }
+        .table thead th { color: #ffeb3b !important; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #004d40; border-radius: 10px; }
+
+        .form-container { position: absolute; top: 0; height: 100%; transition: all 0.6s ease-in-out; }
+        .sign-in-container { left: 0; width: 50%; z-index: 2; }
+        .sign-up-container { left: 0; width: 50%; opacity: 0; z-index: 1; }
+        .login-box.active .sign-in-container { transform: translateX(100%); opacity: 0; }
+        .login-box.active .sign-up-container { transform: translateX(100%); opacity: 1; z-index: 5; animation: show 0.6s; }
+        .overlay-container { position: absolute; top: 0; left: 50%; width: 50%; height: 100%; overflow: hidden; transition: all 0.6s ease-in-out; z-index: 100; }
+        .login-box.active .overlay-container { transform: translateX(-100%); }
+        .overlay { background: linear-gradient(to right, #00796b, #ffc107); color: #ffffff; position: relative; left: -100%; height: 100%; width: 200%; transform: translateX(0); transition: all 0.6s ease-in-out; }
+        .login-box.active .overlay { transform: translateX(50%); }
+        .overlay-panel { position: absolute; width: 50%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 0 40px; text-align: center; top: 0; transition: all 0.6s ease-in-out; }
+        .overlay-left { transform: translateX(-20%); }
+        .login-box.active .overlay-left { transform: translateX(0); }
+        .overlay-right { right: 0; transform: translateX(0); }
+        .login-box.active .overlay-right { transform: translateX(20%); }
+        .btn-ghost { background: transparent; border: 2px solid #ffffff; color: white !important; border-radius: 50px; padding: 10px 30px; font-weight: 600; text-transform: uppercase; margin-top: 15px; }
+        @keyframes show { 0%, 49.9% { opacity: 0; z-index: 1; } 50%, 100% { opacity: 1; z-index: 5; } }
+    </style>
+</head>
+<body>
+
+<nav id="mainNav" class="navbar navbar-dark sticky-top">
+    <div class="container">
+        <span class="navbar-brand fw-bold text-yellow"><i class="bi bi-box-seam me-2"></i>LEND-IT</span>
+        <div class="d-flex align-items-center">
+            <div id="userDisplay" class="me-3 small text-white d-flex align-items-center"></div>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm rounded-pill px-4 text-white">Keluar</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div id="landing-section" class="section active text-center" style="padding-top: 20vh;">
+        <i class="bi bi-moisture text-yellow mb-4" style="font-size: 5rem; display: block;"></i>
+        <h1 class="display-3 fw-bold">Lend-It <span class="text-yellow">App</span></h1>
+        <p class="landing-desc mb-5">Solusi Cerdas Manajemen Alat Praktikum Pertanian (ATPH)</p>
+        <button onclick="goToLogin()" class="btn btn-modern px-5">Mulai Sekarang</button>
+    </div>
+
+    <div id="login-section" class="section">
+        <div class="login-box" id="loginBox">
+            <div class="form-container sign-up-container">
+                <form id="registerForm" class="p-5 h-100 d-flex flex-column justify-content-center bg-transparent">
+                    <h2 class="fw-bold mb-3">Buat Akun</h2>
+                    <input type="text" id="regUser" class="form-control mb-2" placeholder="Username Baru" required>
+                    <input type="password" id="regPass" class="form-control mb-2" placeholder="Password Baru" required>
+                    <select id="regRole" class="form-control mb-3" style="background-color: #222 !important;">
+                        <option value="Peminjam">Siswa (Peminjam)</option>
+                        <option value="Petugas">Petugas (Butuh Acc Admin)</option>
+                    </select>
+                    <button type="button" onclick="registerAccount()" class="btn-modern w-100">Daftar Akun</button>
+                </form>
+            </div>
+            <div class="form-container sign-in-container">
+                <form id="loginForm" class="p-5 h-100 d-flex flex-column justify-content-center bg-transparent">
+                    <h2 class="fw-bold mb-2">Selamat Datang</h2>
+                    <p class="mb-4">Silakan masuk untuk melanjutkan</p>
+                    <input type="text" id="userInput" class="form-control mb-2" placeholder="Username">
+                    <input type="password" id="passInput" class="form-control mb-3" placeholder="Password">
+                    <div id="loginErr" class="text-danger small mb-2"></div>
+                    <div id="login-btn-container">
+                        <button type="button" id="login-btn" onclick="attemptLogin()" class="btn-modern w-75">Masuk</button>
+                    </div>
+                </form>
+            </div>
+            <div class="overlay-container">
+                <div class="overlay">
+                    <div class="overlay-panel overlay-left">
+                        <h3>Sudah Punya Akun?</h3>
+                        <p>Klik tombol di bawah untuk masuk ke dashboard Anda.</p>
+                        <button class="btn-ghost" id="signInBtn">Ke Login</button>
+                    </div>
+                    <div class="overlay-panel overlay-right">
+                        <h3>Halo, Rekan ATPH!</h3>
+                        <p>Belum memiliki akses? Mari bergabung bersama kami.</p>
+                        <button class="btn-ghost" id="signUpBtn">Ke Daftar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-section" class="section container">
+        <div class="d-flex justify-content-between align-items-center my-4">
+            <h3>Admin <span class="text-yellow">Panel</span></h3>
+            <div id="adminClock" class="small"></div>
+        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-4"><div class="glass-card text-center"><i class="bi bi-archive text-yellow"></i><div class="small">Alat</div><div id="statAlat" class="h4 fw-bold">0</div></div></div>
+            <div class="col-4"><div class="glass-card text-center"><i class="bi bi-arrow-repeat text-green"></i><div class="small">Aktif</div><div id="statAktif" class="h4 fw-bold">0</div></div></div>
+            <div class="col-4"><div class="glass-card text-center"><i class="bi bi-hourglass-split text-info"></i><div class="small">Antrean</div><div id="statAntre" class="h4 fw-bold">0</div></div></div>
+        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="glass-card mb-4">
+                    <h6 class="text-yellow mb-3"><i class="bi bi-graph-up me-2"></i>Statistik Penggunaan </h6>
+                    <div class="chart-wrapper"><div class="chart-scroll-area"><canvas id="loanChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card mb-4" style="height: calc(100% - 1.5rem);">
+                    <h6 class="text-yellow mb-3"><i class="bi bi-person-check me-2"></i>Persetujuan Petugas</h6>
+                    <div id="accPetugasTable" class="overflow-auto" style="max-height: 200px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card mb-4">
+            <h6 class="mb-3 text-yellow"><i class="bi bi-plus-circle me-2"></i>Inventaris Alat</h6>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6"><input type="text" id="alatBaru" class="form-control" placeholder="Nama Alat Baru..."></div>
+                <div class="col-md-3"><input type="number" id="jumlahBaru" class="form-control" placeholder="Jumlah Stok"></div>
+                <div class="col-md-3"><button onclick="addAlat()" class="btn btn-modern w-100 py-2">Tambah Alat</button></div>
+            </div>
+            <div id="adminTable" class="table-responsive"></div>
+        </div>
+        <div class="glass-card mt-3">
+            <h6 class="text-yellow mb-3"><i class="bi bi-eye me-2"></i>Monitoring Transaksi</h6>
+            <div id="adminMonitoringTable"></div>
+        </div>
+
+        <div class="glass-card mt-3">
+            <h6 class="text-yellow mb-3"><i class="bi bi-star-fill me-2"></i>Manajemen Poin & Pengguna</h6>
+            <div id="adminPointTable" class="table-responsive"></div>
+        </div>
+
+        <div id="admin-detail-stat-container"></div> 
+        <div class="glass-card mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0"><i class="bi bi-clock-history me-2"></i>Log Riwayat</h6>
+                <div class="btn-group">
+                    <button onclick="downloadCSV()" class="btn btn-sm btn-outline-info rounded-pill px-3 me-2 text-white">CSV</button>
+                    <button onclick="downloadPDF()" class="btn btn-sm btn-outline-danger rounded-pill px-3 text-white">PDF</button>
+                </div>
+            </div>
+            <div id="historyTable"></div>
+        </div>
+    </div>
+
+    <div id="petugas-section" class="section container">
+        <h3 class="my-4"><i class="bi bi-shield-check text-yellow me-2"></i>Verifikasi Petugas</h3>
+        <div class="glass-card"><div id="petugasList"></div></div>
+    </div>
+
+    <div id="peminjam-section" class="section container">
+        <div class="d-flex justify-content-between align-items-end my-4">
+            <div>
+                <h3 id="greetingText" class="mb-0">Pilih <span class="text-yellow">Alat</span></h3>
+                <p class="small mb-0">Klik pinjam untuk mulai meminjam alat</p>
+            </div>
+        </div>
+        <div class="glass-card mb-4 p-2 shadow-lg">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search text-white"></i></span>
+                <input type="text" id="cariAlat" class="form-control bg-transparent text-white border-0" placeholder="Cari nama alat praktikum..." onkeyup="fiturCari()">
+            </div>
+        </div>
+        <div id="userGrid" class="row"></div>
+        <h4 class="my-4 mt-5"><i class="bi bi-clipboard-data text-green me-2"></i>Status Pinjaman Saya</h4>
+        <div id="myLoans" class="row"></div>
+    </div>
+</div>
+
+<script>
+    const btnLari = document.getElementById('login-btn');
+    const containerLari = document.getElementById('login-btn-container');
+
+    btnLari.addEventListener('mouseover', () => {
+        const u = document.getElementById('userInput').value.trim();
+        const p = document.getElementById('passInput').value.trim();
+        
+        if (u === "" || p === "") {
+            const maxX = containerLari.offsetWidth - btnLari.offsetWidth;
+            const randomX = Math.random() * maxX;
+            const randomY = (Math.random() * 40) - 20;
+
+            btnLari.style.left = `${randomX}px`;
+            btnLari.style.top = `${randomY}px`;
+            btnLari.style.transform = 'translateX(0)';
+        }
+    });
+
+    document.getElementById('loginForm').addEventListener('input', () => {
+        const u = document.getElementById('userInput').value.trim();
+        const p = document.getElementById('passInput').value.trim();
+        if (u !== "" && p !== "") {
+            btnLari.style.left = '50%';
+            btnLari.style.top = '0';
+            btnLari.style.transform = 'translateX(-50%)';
+        }
+    });
+
+    const getGreeting = () => {
+        const hr = new Date().getHours();
+        if (hr < 12) return "Selamat Pagi";
+        if (hr < 18) return "Selamat Siang ";
+        return "Selamat Malam";
+    };
+
+    const loginBox = document.getElementById('loginBox');
+    const signUpBtn = document.getElementById('signUpBtn');
+    const signInBtn = document.getElementById('signInBtn');
+
+    if(signUpBtn) signUpBtn.addEventListener('click', () => loginBox.classList.add('active'));
+    if(signInBtn) signInBtn.addEventListener('click', () => loginBox.classList.remove('active'));
+
+    const defaultUsers = {
+        'admin': { pass: 'admin123', role: 'Admin', status: 'approved', poin: 100 },
+        'petugas': { pass: 'petugas123', role: 'Petugas', status: 'approved', poin: 100 },
+        'user': { pass: 'user123', role: 'Peminjam', status: 'approved', poin: 100 }
+    };
+
+    let users = JSON.parse(localStorage.getItem('appUsers')) || defaultUsers;
+    let currentUser = ""; 
+    let dbAlat = JSON.parse(localStorage.getItem('dbAlat')) || [
+        { id: 1, nama: "Cangkul Baja", stok: 10 },
+        { id: 2, nama: "Sprayer Elektrik", stok: 5 },
+        { id: 3, nama: "Gunting Stek", stok: 15 }
+    ];
+    let transaksi = JSON.parse(localStorage.getItem('dbTransaksi')) || [];
+    let logs = JSON.parse(localStorage.getItem('dbLogs')) || []; 
+
+    function save() {
+        localStorage.setItem('appUsers', JSON.stringify(users));
+        localStorage.setItem('dbAlat', JSON.stringify(dbAlat));
+        localStorage.setItem('dbTransaksi', JSON.stringify(transaksi));
+        localStorage.setItem('dbLogs', JSON.stringify(logs)); 
+        render();
+        updateChart();
+    }
+
+    function hapusUser(username) {
+        const isAktif = transaksi.some(t => t.peminjam === username);
+        if (isAktif) {
+            Swal.fire('Gagal', 'Pengguna masih memiliki transaksi aktif!', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Hapus Pengguna?',
+            text: `Akun ${username} akan dihapus permanen.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                delete users[username];
+                save();
+                Swal.fire('Terhapus', 'Pengguna berhasil dihapus.', 'success');
+            }
+        });
+    }
+
+    function resetPoin(username) {
+        Swal.fire({
+            title: 'Hapus Poin?',
+            text: `Poin ${username} akan dihapus menjadi 0.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Reset!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                users[username].poin = 0;
+                save();
+                Swal.fire('Direset', `Poin ${username} sekarang 0.`, 'success');
+            }
+        });
+    }
+
+    function tambahPoin(username) {
+        Swal.fire({
+            title: 'Tambah Poin Bonus',
+            input: 'number',
+            inputLabel: 'Jumlah poin untuk diberikan:',
+            inputValue: 50,
+            showCancelButton: true,
+            background: '#1a1a1a', color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                users[username].poin = (users[username].poin || 0) + parseInt(result.value);
+                save();
+            }
+        });
+    }
+
+    function fiturCari() {
+        let input = document.getElementById('cariAlat').value.toLowerCase();
+        let cards = document.querySelectorAll('#userGrid > div');
+        cards.forEach(card => {
+            let nama = card.querySelector('h5').innerText.toLowerCase();
+            card.style.display = nama.includes(input) ? "block" : "none";
+        });
+    }
+
+    function downloadCSV() {
+        if (logs.length === 0) return Swal.fire('Kosong', 'Belum ada riwayat.', 'warning');
+        let csv = "Peminjam,Alat,Jumlah,Kondisi,Poin Sisa,Tanggal Kembali\n";
+        logs.forEach(l => { csv += `${l.peminjam},${l.namaAlat},${l.jumlah},${l.kondisi || 'Baik'},${l.poinUser || 100},${l.waktuKembali}\n`; });
+        let blob = new Blob([csv], { type: 'text/csv' });
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'Riwayat_LendIt.csv';
+        a.click();
+    }
+
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("Laporan Riwayat Peminjaman LendIt", 14, 15);
+        const tableData = logs.map(l => [l.peminjam, l.namaAlat, l.jumlah, l.kondisi || 'Baik', l.waktuKembali]);
+        doc.autoTable({
+            head: [['Peminjam', 'Alat', 'Jumlah', 'Kondisi Akhir', 'Tanggal Kembali']],
+            body: tableData,
+            startY: 25,
+            theme: 'grid'
+        });
+        doc.save('Laporan_LendIt.pdf');
+    }
+
+    function registerAccount() {
+        const u = document.getElementById('regUser').value;
+        const p = document.getElementById('regPass').value;
+        const r = document.getElementById('regRole').value;
+        if (!u || !p) { Swal.fire('Error', 'Isi semua kolom!', 'error'); return; }
+        if (users[u]) { Swal.fire('Error', 'Username sudah ada!', 'error'); return; }
+        
+        users[u] = { 
+            pass: p, 
+            role: r, 
+            status: (r === 'Petugas' ? 'pending' : 'approved'),
+            poin: 100
+        };
+        save();
+        
+        if(r === 'Petugas') {
+            Swal.fire('Terdaftar', 'Menunggu persetujuan Admin.', 'info');
+        } else {
+            Swal.fire('Berhasil', 'Silakan login.', 'success');
+        }
+        loginBox.classList.remove('active');
+    }
+
+    function attemptLogin() {
+        const u = document.getElementById('userInput').value;
+        const p = document.getElementById('passInput').value;
+        const err = document.getElementById('loginErr');
+        
+        if (users[u] && users[u].pass === p) {
+            if (users[u].status === 'pending') { 
+                err.innerText = "Akun belum disetujui Admin!"; 
+                return; 
+            }
+            currentUser = u; 
+            const userObj = users[u];
+            
+            const poinBadge = userObj.role === 'Admin' ? '' : `<span class="badge bg-warning text-dark me-2">Poin: ${userObj.poin || 0}</span>`;
+            
+            document.getElementById('userDisplay').innerHTML = `
+                ${poinBadge}
+                <i class="bi bi-person-circle me-1"></i> ${u} (${userObj.role})
+            `;
+            
+            if(document.getElementById('greetingText')) {
+                document.getElementById('greetingText').innerHTML = `${getGreeting()}, <span class="text-yellow">${u}</span>`;
+            }
+            switchSection(userObj.role.toLowerCase() + '-section');
+            document.getElementById('mainNav').style.display = 'block';
+            
+            Swal.fire({
+                title: getGreeting(),
+                text: 'Berhasil masuk sebagai ' + userObj.role,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                background: '#1a1a1a',
+                color: '#fff'
+            });
+
+            render();
+            updateChart();
+        } else { 
+            err.innerText = "Username atau Password salah!"; 
+        }
+    }
+
+    function switchSection(targetId) {
+        const activeSection = document.querySelector('.section.active');
+        if (activeSection) {
+            activeSection.classList.remove('active');
+        }
+        setTimeout(() => {
+            const nextSection = document.getElementById(targetId);
+            nextSection.classList.add('active');
+        }, 50);
+    }
+
+    function logout() { location.reload(); }
+    function goToLogin() { switchSection('login-section'); }
+
+    function pinjam(idAlat) {
+        if(users[currentUser].poin <= 0) {
+            Swal.fire('Sanksi Aktif', 'Poin Anda 0. Anda tidak diperbolehkan meminjam alat sampai melapor ke Admin.', 'error');
+            return;
+        }
+
+        const targetBtn = event.target;
+        const i = dbAlat.findIndex(x => x.id === idAlat);
+        const inputJml = document.getElementById(`jml-${idAlat}`).value;
+        const jml = parseInt(inputJml);
+
+        if(!jml || jml <= 0) { Swal.fire('Oops', 'Masukkan jumlah valid!', 'warning'); return; }
+        if(jml > dbAlat[i].stok) { Swal.fire('Gagal', 'Stok tidak mencukupi!', 'error'); return; }
+
+        targetBtn.classList.add('btn-loading');
+
+        setTimeout(() => {
+            transaksi.push({
+                idTrans: Date.now(),
+                idAlat: idAlat,
+                namaAlat: dbAlat[i].nama,
+                peminjam: currentUser,
+                jumlah: jml,
+                status: "Menunggu Persetujuan",
+                kondisiAwal: "Baik", 
+                waktuPinjam: new Date().toLocaleString('id-ID'),
+                deadline: null 
+            });
+            save();
+            targetBtn.classList.remove('btn-loading');
+            Swal.fire('Berhasil', 'Permohonan pinjam dikirim ke Petugas.', 'success');
+        }, 700);
+    }
+
+    function balik(idTrans) {
+        const tIdx = transaksi.findIndex(t => t.idTrans === idTrans);
+        const item = transaksi[tIdx];
+        
+        Swal.fire({
+            title: 'Pengembalian',
+            html: `
+                <div class="text-start">
+                    <label class="small text-white">Jumlah dikembalikan:</label>
+                    <input type="number" id="swal-jml" class="form-control mb-3" value="${item.jumlah}" min="1" max="${item.jumlah}">
+                    <label class="small text-white">Kondisi Alat Sekarang:</label>
+                    <select id="swal-kondisi" class="form-control" style="background-color: #222 !important;">
+                        <option value="Baik">Baik (Normal)</option>
+                        <option value="Rusak Ringan">Rusak Ringan (Sanksi -5 Poin)</option>
+                        <option value="Rusak Parah">Rusak Parah (Sanksi -20 Poin)</option>
+                        <option value="Hilang">Hilang (Sanksi -50 Poin)</option>
+                    </select>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Proses Kembali',
+            background: '#1a1a1a',
+            color: '#fff',
+            preConfirm: () => {
+                return {
+                    jml: document.getElementById('swal-jml').value,
+                    kondisi: document.getElementById('swal-kondisi').value
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                let jmlBalik = parseInt(result.value.jml);
+                if (isNaN(jmlBalik) || jmlBalik <= 0 || jmlBalik > item.jumlah) {
+                    Swal.fire('Gagal', 'Jumlah tidak valid!', 'error');
+                } else {
+                    transaksi[tIdx].status = "Menunggu Pengembalian";
+                    transaksi[tIdx].jumlahProsesKembali = jmlBalik; 
+                    transaksi[tIdx].kondisiAkhir = result.value.kondisi;
+                    save();
+                    Swal.fire('Siap', 'Serahkan barang ke meja petugas untuk verifikasi.', 'info');
+                }
+            }
+        });
+    }
+
+    function setujuPinjam(idTrans) {
+        const tIdx = transaksi.findIndex(t => t.idTrans === idTrans);
+        const aIdx = dbAlat.findIndex(a => a.id === transaksi[tIdx].idAlat);
+        
+        Swal.fire({
+            title: 'Verifikasi Kondisi',
+            text: 'Tentukan kondisi alat saat diserahkan ke siswa:',
+            input: 'select',
+            inputOptions: { 'Baik': 'Baik', 'Lecet': 'Lecet/Kotor' },
+            showCancelButton: true,
+            background: '#1a1a1a', color: '#fff'
+        }).then(res => {
+            if(res.isConfirmed) {
+                if(dbAlat[aIdx].stok >= transaksi[tIdx].jumlah) {
+                    dbAlat[aIdx].stok -= transaksi[tIdx].jumlah;
+                    transaksi[tIdx].status = "Dipinjam";
+                    transaksi[tIdx].kondisiAwal = res.value;
+                    
+                    let d = new Date();
+                    d.setDate(d.getDate() + 3); 
+                    transaksi[tIdx].deadline = d.getTime(); 
+
+                    save();
+                    Swal.fire('Sukses', 'Peminjaman disetujui.', 'success');
+                } else {
+                    Swal.fire('Stok Habis', 'Gagal menyetujui, stok tidak cukup.', 'error');
+                }
+            }
+        });
+    }
+
+    function tolakPeminjaman(idTrans) {
+        Swal.fire({
+            title: 'Tolak Pinjaman?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Tolak'
+        }).then((res) => {
+            if(res.isConfirmed) {
+                const tIdx = transaksi.findIndex(t => t.idTrans === idTrans);
+                transaksi.splice(tIdx, 1);
+                save();
+            }
+        });
+    }
+
+    function setujuBalik(idTrans) {
+        const tIdx = transaksi.findIndex(t => t.idTrans === idTrans);
+        const aIdx = dbAlat.findIndex(a => a.id === transaksi[tIdx].idAlat);
+        const item = transaksi[tIdx];
+        const userPeminjam = item.peminjam;
+        const jmlDikembalikan = item.jumlahProsesKembali;
+        const kondisi = item.kondisiAkhir;
+        const now = new Date().getTime();
+
+        let potongan = 0;
+        let ketSanksi = [];
+
+        if(item.deadline && now > item.deadline) {
+            potongan += 10;
+            ketSanksi.push("Terlambat (-10)");
+        }
+        if(kondisi === "Rusak Ringan") { potongan += 5; ketSanksi.push("Rusak Ringan (-5)"); }
+        if(kondisi === "Rusak Parah") { potongan += 20; ketSanksi.push("Rusak Parah (-20)"); }
+        if(kondisi === "Hilang") { potongan += 50; ketSanksi.push("Hilang (-50)"); }
+
+        users[userPeminjam].poin = Math.max(0, (users[userPeminjam].poin || 100) - potongan);
+        
+        logs.push({
+            peminjam: userPeminjam,
+            namaAlat: item.namaAlat,
+            jumlah: jmlDikembalikan,
+            kondisi: kondisi,
+            poinUser: users[userPeminjam].poin,
+            waktuKembali: new Date().toLocaleString('id-ID'),
+            status: "Selesai"
+        });
+
+        if(kondisi !== "Hilang") {
+            dbAlat[aIdx].stok += jmlDikembalikan;
+        }
+        
+        item.jumlah -= jmlDikembalikan;
+
+        if (item.jumlah <= 0) {
+            transaksi.splice(tIdx, 1); 
+        } else {
+            item.status = "Dipinjam"; 
+            delete item.jumlahProsesKembali;
+        }
+
+        save();
+        
+        let pesan = potongan > 0 ? `Sanksi diterapkan: ${ketSanksi.join(", ")}. Poin sisa: ${users[userPeminjam].poin}` : "Alat kembali dalam kondisi baik & tepat waktu.";
+        Swal.fire('Selesai', pesan, potongan > 0 ? 'warning' : 'success');
+    }
+
+    function approvePetugas(username) {
+        users[username].status = 'approved';
+        save();
+        Swal.fire('Approved', username + ' kini berstatus Petugas.', 'success');
+    }
+
+    function rejectPetugas(username) {
+        delete users[username];
+        save();
+    }
+
+    function addAlat() {
+        const name = document.getElementById('alatBaru').value;
+        const qty = parseInt(document.getElementById('jumlahBaru').value);
+        if(name && qty) {
+            dbAlat.push({ id: Date.now(), nama: name, stok: qty });
+            document.getElementById('alatBaru').value = "";
+            document.getElementById('jumlahBaru').value = "";
+            save();
+            Swal.fire('Berhasil', 'Alat baru ditambahkan.', 'success');
+        }
+    }
+
+    function editAlat(id) {
+        const i = dbAlat.findIndex(x => x.id === id);
+        const alat = dbAlat[i];
+
+        Swal.fire({
+            title: 'Edit Data Alat',
+            html: `
+                <div class="text-start">
+                    <label class="small text-white">Nama Alat:</label>
+                    <input type="text" id="edit-nama" class="form-control mb-3" value="${alat.nama}">
+                    <label class="small text-white">Jumlah Stok:</label>
+                    <input type="number" id="edit-stok" class="form-control" value="${alat.stok}">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            background: '#1a1a1a',
+            color: '#fff',
+            preConfirm: () => {
+                return {
+                    nama: document.getElementById('edit-nama').value,
+                    stok: parseInt(document.getElementById('edit-stok').value)
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (result.value.nama && !isNaN(result.value.stok)) {
+                    dbAlat[i].nama = result.value.nama;
+                    dbAlat[i].stok = result.value.stok;
+                    save();
+                    Swal.fire('Berhasil', 'Data alat diperbarui.', 'success');
+                } else {
+                    Swal.fire('Gagal', 'Data tidak valid.', 'error');
+                }
+            }
+        });
+    }
+
+    function deleteAlat(id) {
+        Swal.fire({
+            title: 'Hapus Alat?',
+            text: 'Data alat akan dihapus permanen dari sistem.',
+            showCancelButton: true,
+            confirmButtonColor: '#d33'
+        }).then(res => {
+            if(res.isConfirmed) {
+                dbAlat = dbAlat.filter(i => i.id !== id); 
+                save(); 
+            }
+        });
+    }
+
+    let myChart = null;
+    function updateChart() {
+        const ctx = document.getElementById('loanChart');
+        if (!ctx || logs.length === 0) return;
+
+        const labels = [...new Set(logs.map(l => l.namaAlat))];
+        const dataCounts = labels.map(label => {
+            return logs.filter(l => l.namaAlat === label).reduce((acc, curr) => acc + curr.jumlah, 0);
+        });
+
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Unit Dipinjam',
+                    data: dataCounts,
+                    backgroundColor: 'rgba(255, 235, 59, 0.7)',
+                    borderColor: '#ffeb3b',
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    barThickness: 45
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { display: true, labels: { color: '#fff' } } 
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.1)' }, 
+                        ticks: { color: '#fff' } 
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { color: '#fff' } 
+                    }
+                }
+            }
+        });
+    }
+
+    function render() {
+        const now = new Date().getTime();
+
+        if(currentUser && document.getElementById('userDisplay')) {
+            const userObj = users[currentUser];
+            const upoin = userObj.poin || 0;
+            
+            let poinBadge = "";
+            if (userObj.role !== 'Admin') {
+                poinBadge = `<span class="badge ${upoin < 50 ? 'bg-danger' : 'bg-warning'} text-dark me-2">Poin: ${upoin}</span>`;
+            }
+
+            document.getElementById('userDisplay').innerHTML = `
+                ${poinBadge}
+                <i class="bi bi-person-circle me-1"></i> ${currentUser} (${userObj.role})
+            `;
+        }
+
+        if(document.getElementById('statAlat')) {
+            document.getElementById('statAlat').innerText = dbAlat.length;
+            document.getElementById('statAktif').innerText = transaksi.filter(t => t.status === 'Dipinjam').length;
+            document.getElementById('statAntre').innerText = transaksi.filter(t => t.status.includes('Menunggu')).length;
+            document.getElementById('adminClock').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        let accH = `<table class="table table-sm"><tbody>`;
+        let foundP = false;
+        for (let u in users) {
+            if (users[u].status === 'pending') {
+                foundP = true;
+                accH += `<tr><td><small class="fw-bold text-white">${u}</small></td><td class="text-end">
+                    <i class="bi bi-check-circle-fill text-success me-2 pointer" onclick="approvePetugas('${u}')"></i>
+                    <i class="bi bi-x-circle-fill text-danger pointer" onclick="rejectPetugas('${u}')"></i>
+                </td></tr>`;
+            }
+        }
+        document.getElementById('accPetugasTable').innerHTML = foundP ? accH + "</tbody></table>" : "<p class='text-white small py-4 text-center'>Kosong</p>";
+
+        let aH = `<table class="table table-dark table-hover align-middle"><thead><tr><th>Nama Alat</th><th>Stok</th><th class="text-end">Opsi</th></tr></thead><tbody>`;
+        dbAlat.forEach(i => {
+            aH += `<tr><td class="fw-bold text-white">${i.nama}</td><td><span class="badge bg-dark border text-white">${i.stok}</span></td>
+                <td class="text-end">
+                    <button onclick="editAlat(${i.id})" class="btn btn-sm btn-outline-warning border-0 me-1"><i class="bi bi-pencil-square text-white"></i></button>
+                    <button onclick="deleteAlat(${i.id})" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash text-white"></i></button>
+                </td></tr>`;
+        });
+        document.getElementById('adminTable').innerHTML = aH + `</tbody></table>`;
+
+        let mAdminH = `<table class="table table-sm" style="font-size: 0.85rem;">
+                        <thead><tr class="text-white"><th>User</th><th>Alat</th><th>Status</th><th>Deadline</th></tr></thead><tbody>`;
+        let foundTrans = false;
+        transaksi.forEach(t => {
+            foundTrans = true;
+            let statusClass = t.status === 'Dipinjam' ? 'text-green' : (t.status.includes('Menunggu') ? 'text-yellow' : '');
+            
+            let deadlineStr = "-";
+            if (t.deadline) {
+                let dDate = new Date(t.deadline);
+                deadlineStr = dDate.toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+                if (now > t.deadline && t.status === 'Dipinjam') {
+                    deadlineStr = `<span class="text-danger fw-bold">LEWAT!</span>`;
+                }
+            }
+
+            mAdminH += `<tr><td class="text-white">${t.peminjam}</td><td class="text-white">${t.namaAlat}</td><td><span class="${statusClass}">${t.status}</span></td><td class="text-white">${deadlineStr}</td></tr>`;
+        });
+        document.getElementById('adminMonitoringTable').innerHTML = foundTrans ? mAdminH + "</tbody></table>" : "<p class='text-white small text-center py-3'>Tidak ada data transaksi aktif.</p>";
+
+        let pointAdminH = `<table class="table table-dark table-hover align-middle" style="font-size: 0.85rem;">
+            <thead><tr><th>Username</th><th>Role</th><th>Poin</th><th class="text-end">Aksi</th></tr></thead><tbody>`;
+        for (let u in users) {
+            if (users[u].role !== 'Admin') {
+                let pColor = users[u].poin < 50 ? 'text-danger' : 'text-green';
+                pointAdminH += `<tr>
+                    <td class="text-white">${u}</td>
+                    <td><span class="badge bg-dark text-white border-secondary border">${users[u].role}</span></td>
+                    <td><b class="${pColor}">${users[u].poin || 0}</b></td>
+                    <td class="text-end">
+                        <button onclick="tambahPoin('${u}')" class="btn btn-sm btn-outline-success border-0 me-1" title="Beri Bonus"><i class="bi bi-plus-circle"></i></button>
+                        <button onclick="resetPoin('${u}')" class="btn btn-sm btn-outline-warning border-0 me-1" title="Reset Poin"><i class="bi bi-arrow-counterclockwise"></i></button>
+                        <button onclick="hapusUser('${u}')" class="btn btn-sm btn-outline-danger border-0" title="Hapus Pengguna"><i class="bi bi-trash-fill text-white"></i></button>
+                    </td>
+                </tr>`;
+            }
+        }
+        document.getElementById('adminPointTable').innerHTML = pointAdminH + "</tbody></table>";
+
+        let logH = `<table class="table table-sm" style="font-size: 0.75rem;"><thead><tr class="text-white"><th>User</th><th>Alat</th><th>Kondisi</th><th>Kembali</th></tr></thead><tbody>`;
+        if (logs.length > 0) {
+            [...logs].reverse().slice(0, 10).forEach(l => {
+                logH += `<tr><td class="text-white">${l.peminjam}</td><td class="text-white">${l.namaAlat}</td><td class="text-yellow">${l.kondisi || 'Baik'}</td><td class="text-white">${l.waktuKembali}</td></tr>`;
+            });
+            document.getElementById('historyTable').innerHTML = logH + "</tbody></table>";
+        } else {
+            document.getElementById('historyTable').innerHTML = "<p class='text-white small'>Belum ada riwayat.</p>";
+        }
+
+        let pH = `<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Keperluan</th><th>Jml</th><th class="text-center">Aksi</th></tr></thead><tbody>`;
+        let countAntre = 0;
+        transaksi.forEach(t => {
+            if (t.status === "Menunggu Persetujuan") {
+                countAntre++;
+                pH += `<tr>
+                    <td><span class="badge bg-warning text-dark me-2">PINJAM</span><b class="text-white">${t.namaAlat}</b><br><small class="text-white">Oleh: ${t.peminjam}</small></td>
+                    <td class="text-white">${t.jumlah}</td>
+                    <td class="text-center">
+                        <button onclick="setujuPinjam(${t.idTrans})" class="btn btn-success btn-sm rounded-pill px-3 text-white">Setuju</button>
+                        <button onclick="tolakPeminjaman(${t.idTrans})" class="btn btn-outline-danger btn-sm rounded-pill ms-1 text-white">Tolak</button>
+                    </td></tr>`;
+            } else if (t.status === "Menunggu Pengembalian") {
+                countAntre++;
+                pH += `<tr>
+                    <td><span class="badge bg-info text-dark me-2">KEMBALI</span><b class="text-white">${t.namaAlat}</b><br>
+                        <small class="text-yellow">Kondisi Balik: ${t.kondisiAkhir}</small>
+                    </td>
+                    <td class="text-white"><span class="text-info fw-bold">${t.jumlahProsesKembali}</span><small>/${t.jumlah}</small></td>
+                    <td class="text-center">
+                        <button onclick="setujuBalik(${t.idTrans})" class="btn btn-primary btn-sm rounded-pill px-4 text-white">Verifikasi & Terima</button>
+                    </td></tr>`;
+            }
+        });
+        document.getElementById('petugasList').innerHTML = countAntre > 0 ? pH + "</tbody></table></div>" : "<div class='text-center py-5 text-white'><i class='bi bi-check2-all d-block mb-2' style='font-size: 2rem;'></i>Semua tugas selesai!</div>";
+
+        let uH = "";
+        dbAlat.forEach(i => {
+            let stokStatus = i.stok > 5 ? 'bg-success' : (i.stok > 0 ? 'bg-warning text-dark' : 'bg-danger');
+            uH += `<div class="col-6 col-md-4 col-lg-3 mb-4"><div class="glass-card h-100 text-center d-flex flex-column">
+                <div class="mb-3"><i class="bi bi-tools text-yellow" style="font-size: 2rem;"></i></div>
+                <h5 class="fw-bold mb-1 text-white">${i.nama}</h5>
+                <div class="badge rounded-pill ${stokStatus} mb-3" style="font-size: 0.7rem;">
+                    ${i.stok > 0 ? 'Tersedia: ' + i.stok : 'Stok Habis'}
+                </div>
+                <div class="mt-auto">
+                    ${i.stok > 0 ? `
+                        <input type="number" id="jml-${i.id}" class="form-control form-control-sm text-center mb-2" value="1" min="1" max="${i.stok}">
+                        <button onclick="pinjam(${i.id})" class="btn btn-modern btn-sm w-100">Pinjam</button>
+                    ` : `<button disabled class="btn btn-dark btn-sm w-100 opacity-50 text-white">Tidak Tersedia</button>`}
+                </div>
+            </div></div>`;
+        });
+        document.getElementById('userGrid').innerHTML = uH;
+
+        let mH = "";
+        transaksi.filter(t => t.peminjam === currentUser).forEach(t => {
+            let isLate = t.deadline && now > t.deadline && t.status === 'Dipinjam';
+            let statusColor = isLate ? 'text-danger' : (t.status === 'Dipinjam' ? 'text-green' : 'text-yellow');
+            let icon = t.status === 'Dipinjam' ? 'bi-check2-circle' : 'bi-hourglass';
+            let deadlineText = t.deadline ? `Batas: ${new Date(t.deadline).toLocaleDateString('id-ID')}` : 'Menunggu ACC';
+
+            mH += `<div class="col-12 col-md-6 mb-3"><div class="glass-card p-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="bg-dark rounded-circle p-2 me-3"><i class="bi ${icon} ${statusColor}"></i></div>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-white">${t.namaAlat} <small class="text-white">(${t.jumlah} Unit)</small></h6>
+                        <small class="${statusColor}" style="font-size: 0.75rem; font-weight: 600;">
+                            ${isLate ? 'TERLAMBAT! ' : ''}${t.status} | ${deadlineText}
+                        </small>
+                    </div>
+                </div>
+                ${t.status === 'Dipinjam' ? `<button onclick="balik(${t.idTrans})" class="btn btn-sm btn-outline-warning rounded-pill px-3 text-white">Kembalikan</button>` : ''}
+            </div></div>`;
+        });
+        document.getElementById('myLoans').innerHTML = mH || "<div class='text-white small ps-2 mt-2'>Kamu belum memiliki pinjaman aktif.</div>";
+        
+        updateAdvancedStats();
+    }
+
+    function updateAdvancedStats() {
+        const container = document.getElementById('admin-detail-stat-container');
+        if (!container || !currentUser || users[currentUser].role !== 'Admin') return;
+        const ringkasanAlat = {};
+        transaksi.forEach(t => {
+            if (t.status === 'Dipinjam') {
+                if (!ringkasanAlat[t.namaAlat]) ringkasanAlat[t.namaAlat] = { total: 0, orang: [] };
+                ringkasanAlat[t.namaAlat].total += t.jumlah;
+                ringkasanAlat[t.namaAlat].orang.push(`${t.peminjam} (${t.jumlah})`);
+            }
+        });
+        let html = `<div class="glass-card mt-4"><h6 class="text-green mb-3"><i class="bi bi-box-arrow-up me-2"></i>Rincian Alat di Lapangan</h6><div class="table-responsive"><table class="table table-sm" style="font-size: 0.8rem;"><thead><tr class="text-white"><th>Nama Alat</th><th>Total Keluar</th><th>Peminjam (Qty)</th></tr></thead><tbody>`;
+        const keys = Object.keys(ringkasanAlat);
+        if (keys.length > 0) {
+            keys.forEach(nama => {
+                html += `<tr><td class="fw-bold text-yellow">${nama}</td><td class="fw-bold text-white">${ringkasanAlat[nama].total} Unit</td><td><small class="text-white">${ringkasanAlat[nama].orang.join(", ")}</small></td></tr>`;
+            });
+        } else {
+            html += `<tr><td colspan="3" class="text-center text-white py-3">Belum ada alat praktikum yang keluar.</td></tr>`;
+        }
+        container.innerHTML = html + `</tbody></table></div></div>`;
+    }
+
+    window.onload = () => {
+        render();
+        updateChart();
+    };
+</script>
+
+<script>
+(function() {
+    const injectAnnouncement = () => {
+        const userSection = document.getElementById('peminjam-section');
+        if (userSection && !document.getElementById('broadcast-box')) {
+            const box = document.createElement('div');
+            box.id = 'broadcast-box';
+            box.className = 'glass-card mb-4';
+            box.style.borderLeft = '4px solid #ffeb3b';
+            box.style.background = 'rgba(255, 235, 59, 0.05)';
+            box.innerHTML = `
+                <h6 class="text-yellow mb-1" style="font-size: 0.8rem;"><i class="bi bi-megaphone-fill me-2"></i>PENGUMUMAN TERBARU:</h6>
+                <p id="broadcast-msg" class="mb-0 small text-white">Belum ada informasi terbaru dari petugas.</p>
+            `;
+            userSection.insertBefore(box, userSection.children[1]);
+        }
+    };
+
+    const injectAdminFeatures = () => {
+        const adminSection = document.getElementById('admin-section');
+        if (adminSection && !document.getElementById('admin-extra-panel')) {
+            const panel = document.createElement('div');
+            panel.id = 'admin-extra-panel';
+            panel.className = 'row mt-3';
+            panel.innerHTML = `
+                <div class="col-md-6 mb-3">
+                    <div class="glass-card h-100">
+                        <h6 class="text-yellow mb-3"><i class="bi bi-broadcast me-2"></i>Kirim Pengumuman</h6>
+                        <textarea id="input-broadcast" class="form-control mb-2" rows="2" placeholder="Tulis pesan untuk siswa..."></textarea>
+                        <button id="btn-broadcast" class="btn btn-modern btn-sm w-100">Siarkan Sekarang</button>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="glass-card h-100">
+                        <h6 class="text-info mb-3"><i class="bi bi-shield-check me-2"></i>Kesehatan Alat (Usage)</h6>
+                        <div id="health-check-list" style="max-height: 120px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            `;
+            const target = document.getElementById('adminMonitoringTable').parentNode;
+            adminSection.insertBefore(panel, target);
+
+            document.getElementById('btn-broadcast').onclick = () => {
+                const msg = document.getElementById('input-broadcast').value;
+                localStorage.setItem('lendit_msg', msg);
+                Swal.fire('Berhasil', 'Pengumuman telah diperbarui!', 'success');
+                updateExtraDisplays();
+            };
+        }
+    };
+    
+    const updateExtraDisplays = () => {
+        const savedMsg = localStorage.getItem('lendit_msg');
+        const msgEl = document.getElementById('broadcast-msg');
+        if (msgEl && savedMsg) msgEl.innerText = savedMsg;
+
+        const healthList = document.getElementById('health-check-list');
+        if (healthList) {
+            let html = "";
+            dbAlat.forEach(alat => {
+                const totalPakai = logs.filter(l => l.namaAlat === alat.nama).length;
+                let status = "Sangat Baik";
+                let color = "text-green";
+                if(totalPakai > 10) { status = "Butuh Cek"; color = "text-yellow"; }
+                if(totalPakai > 20) { status = "Risiko Aus"; color = "text-danger"; }
+                html += `
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary">
+                        <span class="small text-white">${alat.nama}</span>
+                        <span class="small fw-bold ${color}">${status} (${totalPakai}x)</span>
+                    </div>
+                `;
+            });
+            healthList.innerHTML = html || "<small class='text-white-50'>Belum ada riwayat pemakaian.</p>";
+        }
+    };
+
+    const originalRender = window.render;
+    window.render = function() {
+        if (typeof originalRender === 'function') originalRender();
+        injectAnnouncement();
+        injectAdminFeatures();
+        updateExtraDisplays();
+    };
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            injectAnnouncement();
+            injectAdminFeatures();
+            updateExtraDisplays();
+        }, 300);
+    });
+})();
+</script>
+
+</body>
+  </html>
