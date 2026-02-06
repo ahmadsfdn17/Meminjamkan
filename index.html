@@ -80,7 +80,7 @@
         }
 
         .glass-card:hover {
-            transform: translateY(-10px);
+            transform: translateY(-5px);
             border-color: #ffeb3b;
             box-shadow: 0 15px 35px rgba(255, 235, 59, 0.1);
             background: rgba(255, 255, 255, 0.07);
@@ -191,6 +191,16 @@
         .login-box.active .overlay-right { transform: translateX(20%); }
         .btn-ghost { background: transparent; border: 2px solid #ffffff; color: white !important; border-radius: 50px; padding: 10px 30px; font-weight: 600; text-transform: uppercase; margin-top: 15px; }
         @keyframes show { 0%, 49.9% { opacity: 0; z-index: 1; } 50%, 100% { opacity: 1; z-index: 5; } }
+
+        .progress { background-color: rgba(255,255,255,0.1); overflow: visible; }
+        
+        /* New styling for status indicators */
+        .status-badge-outline {
+            border: 1px dashed #ffeb3b;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
     </style>
 </head>
 <body>
@@ -220,7 +230,12 @@
                     <h2 class="fw-bold mb-3">Buat Akun</h2>
                     <input type="text" id="regUser" class="form-control mb-2" placeholder="Username Baru" required>
                     <input type="password" id="regPass" class="form-control mb-2" placeholder="Password Baru" required>
-                    <select id="regRole" class="form-control mb-3" style="background-color: #222 !important;">
+                    
+                    <div id="kelasContainer" class="mb-2">
+                        <input type="text" id="regKelas" class="form-control" placeholder="Kelas Baru ">
+                    </div>
+
+                    <select id="regRole" class="form-control mb-3" style="background-color: #222 !important;" onchange="toggleKelasInput()">
                         <option value="Peminjam">Siswa (Peminjam)</option>
                         <option value="Petugas">Petugas (Butuh Acc Admin)</option>
                     </select>
@@ -281,7 +296,7 @@
             </div>
         </div>
         <div class="glass-card mb-4">
-            <h6 class="mb-3 text-yellow"><i class="bi bi-plus-circle me-2"></i>Inventaris Alat</h6>
+            <h6 class="mb-3 text-yellow"><i class="bi bi-plus-circle me-2"></i>Inventaris Alat & Pemeliharaan</h6>
             <div class="row g-2 mb-3">
                 <div class="col-md-6"><input type="text" id="alatBaru" class="form-control" placeholder="Nama Alat Baru..."></div>
                 <div class="col-md-3"><input type="number" id="jumlahBaru" class="form-control" placeholder="Jumlah Stok"></div>
@@ -380,17 +395,17 @@
     if(signInBtn) signInBtn.addEventListener('click', () => loginBox.classList.remove('active'));
 
     const defaultUsers = {
-        'admin': { pass: 'admin123', role: 'Admin', status: 'approved', poin: 100 },
-        'petugas': { pass: 'petugas123', role: 'Petugas', status: 'approved', poin: 100 },
-        'user': { pass: 'user123', role: 'Peminjam', status: 'approved', poin: 100 }
+        'admin': { pass: 'admin123', role: 'Admin', status: 'approved', poin: 100, kelas: '-' },
+        'petugas': { pass: 'petugas123', role: 'Petugas', status: 'approved', poin: 100, kelas: '-' },
+        'user': { pass: 'user123', role: 'Peminjam', status: 'approved', poin: 100, kelas: 'XII ATPH 1' }
     };
 
     let users = JSON.parse(localStorage.getItem('appUsers')) || defaultUsers;
     let currentUser = ""; 
     let dbAlat = JSON.parse(localStorage.getItem('dbAlat')) || [
-        { id: 1, nama: "Cangkul Baja", stok: 10 },
-        { id: 2, nama: "Sprayer Elektrik", stok: 5 },
-        { id: 3, nama: "Gunting Stek", stok: 15 }
+        { id: 1, nama: "Cangkul Baja", stok: 10, maintenance: 0 },
+        { id: 2, nama: "Sprayer Elektrik", stok: 5, maintenance: 0 },
+        { id: 3, nama: "Gunting Stek", stok: 15, maintenance: 0 }
     ];
     let transaksi = JSON.parse(localStorage.getItem('dbTransaksi')) || [];
     let logs = JSON.parse(localStorage.getItem('dbLogs')) || []; 
@@ -402,6 +417,12 @@
         localStorage.setItem('dbLogs', JSON.stringify(logs)); 
         render();
         updateChart();
+    }
+
+    function toggleKelasInput() {
+        const role = document.getElementById('regRole').value;
+        const container = document.getElementById('kelasContainer');
+        container.style.display = (role === 'Petugas') ? 'none' : 'block';
     }
 
     function hapusUser(username) {
@@ -471,8 +492,11 @@
 
     function downloadCSV() {
         if (logs.length === 0) return Swal.fire('Kosong', 'Belum ada riwayat.', 'warning');
-        let csv = "Peminjam,Alat,Jumlah,Kondisi,Poin Sisa,Tanggal Kembali\n";
-        logs.forEach(l => { csv += `${l.peminjam},${l.namaAlat},${l.jumlah},${l.kondisi || 'Baik'},${l.poinUser || 100},${l.waktuKembali}\n`; });
+        let csv = "Peminjam,Kelas,Alat,Jumlah,Kondisi,Tanggal Kembali\n";
+        logs.forEach(l => { 
+            let infoKelas = users[l.peminjam] ? users[l.peminjam].kelas : (l.kelas || '-');
+            csv += `${l.peminjam},${infoKelas},${l.namaAlat},${l.jumlah},${l.kondisi || 'Baik'},${l.waktuKembali}\n`; 
+        });
         let blob = new Blob([csv], { type: 'text/csv' });
         let url = window.URL.createObjectURL(blob);
         let a = document.createElement('a');
@@ -485,9 +509,12 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.text("Laporan Riwayat Peminjaman LendIt", 14, 15);
-        const tableData = logs.map(l => [l.peminjam, l.namaAlat, l.jumlah, l.kondisi || 'Baik', l.waktuKembali]);
+        const tableData = logs.map(l => {
+            let infoKelas = users[l.peminjam] ? users[l.peminjam].kelas : (l.kelas || '-');
+            return [l.peminjam, infoKelas, l.namaAlat, l.jumlah, l.kondisi || 'Baik', l.waktuKembali];
+        });
         doc.autoTable({
-            head: [['Peminjam', 'Alat', 'Jumlah', 'Kondisi Akhir', 'Tanggal Kembali']],
+            head: [['Peminjam', 'Kelas', 'Alat', 'Jumlah', 'Kondisi Akhir', 'Tanggal Kembali']],
             body: tableData,
             startY: 25,
             theme: 'grid'
@@ -499,12 +526,16 @@
         const u = document.getElementById('regUser').value;
         const p = document.getElementById('regPass').value;
         const r = document.getElementById('regRole').value;
+        const k = document.getElementById('regKelas').value;
+
         if (!u || !p) { Swal.fire('Error', 'Isi semua kolom!', 'error'); return; }
+        if (r === 'Peminjam' && !k) { Swal.fire('Error', 'Siswa wajib mengisi kelas!', 'error'); return; }
         if (users[u]) { Swal.fire('Error', 'Username sudah ada!', 'error'); return; }
         
         users[u] = { 
             pass: p, 
             role: r, 
+            kelas: (r === 'Peminjam' ? k : '-'),
             status: (r === 'Petugas' ? 'pending' : 'approved'),
             poin: 100
         };
@@ -575,6 +606,62 @@
     function logout() { location.reload(); }
     function goToLogin() { switchSection('login-section'); }
 
+    function manageMaintenance(id) {
+        const i = dbAlat.findIndex(x => x.id === id);
+        const alat = dbAlat[i];
+        const currentMaint = alat.maintenance || 0;
+
+        Swal.fire({
+            title: 'Manajemen Perbaikan Alat',
+            html: `
+                <div class="text-start text-white">
+                    <p class="small mb-3">Unit <b>${alat.nama}</b> saat ini di bengkel: <span class="badge bg-danger">${currentMaint} Unit</span></p>
+                    
+                    <div class="mb-3 p-2 border border-secondary rounded">
+                        <label class="small fw-bold text-yellow">Kirim ke Bengkel (Rusak):</label>
+                        <input type="number" id="maint-add" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Jumlah unit baru rusak...">
+                    </div>
+
+                    <div class="mb-2 p-2 border border-secondary rounded">
+                        <label class="small fw-bold text-green">Selesai Diperbaiki (Sehat):</label>
+                        <input type="number" id="maint-reduce" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Jumlah unit sudah sehat..." max="${currentMaint}">
+                        <small class="text-white-50" style="font-size:0.6rem;">*Maksimal ${currentMaint} unit</small>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Simpan Perubahan',
+            background: '#1a1a1a',
+            color: '#fff',
+            preConfirm: () => {
+                return {
+                    tambah: parseInt(document.getElementById('maint-add').value) || 0,
+                    kurang: parseInt(document.getElementById('maint-reduce').value) || 0
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const { tambah, kurang } = result.value;
+                let newMaint = currentMaint + tambah - kurang;
+
+                if (newMaint < 0) {
+                    Swal.fire('Gagal', 'Jumlah unit yang diperbaiki tidak bisa negatif!', 'error');
+                } else if (newMaint > alat.stok) {
+                    Swal.fire('Gagal', 'Jumlah unit di bengkel melebihi total stok alat!', 'error');
+                } else {
+                    dbAlat[i].maintenance = newMaint;
+                    save();
+                    
+                    let msgParts = [];
+                    if(tambah > 0) msgParts.push(`${tambah} unit masuk bengkel`);
+                    if(kurang > 0) msgParts.push(`${kurang} unit telah diperbaiki`);
+                    
+                    Swal.fire('Updated', msgParts.length > 0 ? msgParts.join(" & ") : "Tidak ada perubahan", 'success');
+                }
+            }
+        });
+    }
+
     function pinjam(idAlat) {
         if(users[currentUser].poin <= 0) {
             Swal.fire('Sanksi Aktif', 'Poin Anda 0. Anda tidak diperbolehkan meminjam alat sampai melapor ke Admin.', 'error');
@@ -585,9 +672,15 @@
         const i = dbAlat.findIndex(x => x.id === idAlat);
         const inputJml = document.getElementById(`jml-${idAlat}`).value;
         const jml = parseInt(inputJml);
+        
+        const maintQty = dbAlat[i].maintenance || 0;
+        const stokTersedia = dbAlat[i].stok - maintQty;
 
         if(!jml || jml <= 0) { Swal.fire('Oops', 'Masukkan jumlah valid!', 'warning'); return; }
-        if(jml > dbAlat[i].stok) { Swal.fire('Gagal', 'Stok tidak mencukupi!', 'error'); return; }
+        if(jml > stokTersedia) { 
+            Swal.fire('Gagal', `Stok tidak mencukupi! (${maintQty} unit sedang dalam perbaikan)`, 'error'); 
+            return; 
+        }
 
         targetBtn.classList.add('btn-loading');
 
@@ -597,6 +690,7 @@
                 idAlat: idAlat,
                 namaAlat: dbAlat[i].nama,
                 peminjam: currentUser,
+                kelasPeminjam: users[currentUser].kelas || '-',
                 jumlah: jml,
                 status: "Menunggu Persetujuan",
                 kondisiAwal: "Baik", 
@@ -667,7 +761,10 @@
             background: '#1a1a1a', color: '#fff'
         }).then(res => {
             if(res.isConfirmed) {
-                if(dbAlat[aIdx].stok >= transaksi[tIdx].jumlah) {
+                const maintQty = dbAlat[aIdx].maintenance || 0;
+                const stokTersedia = dbAlat[aIdx].stok - maintQty;
+
+                if(stokTersedia >= transaksi[tIdx].jumlah) {
                     dbAlat[aIdx].stok -= transaksi[tIdx].jumlah;
                     transaksi[tIdx].status = "Dipinjam";
                     transaksi[tIdx].kondisiAwal = res.value;
@@ -679,7 +776,7 @@
                     save();
                     Swal.fire('Sukses', 'Peminjaman disetujui.', 'success');
                 } else {
-                    Swal.fire('Stok Habis', 'Gagal menyetujui, stok tidak cukup.', 'error');
+                    Swal.fire('Stok Habis', 'Gagal menyetujui, stok tidak cukup (Unit mungkin sedang diperbaiki).', 'error');
                 }
             }
         });
@@ -767,7 +864,7 @@
         const name = document.getElementById('alatBaru').value;
         const qty = parseInt(document.getElementById('jumlahBaru').value);
         if(name && qty) {
-            dbAlat.push({ id: Date.now(), nama: name, stok: qty });
+            dbAlat.push({ id: Date.now(), nama: name, stok: qty, maintenance: 0 });
             document.getElementById('alatBaru').value = "";
             document.getElementById('jumlahBaru').value = "";
             save();
@@ -785,7 +882,7 @@
                 <div class="text-start">
                     <label class="small text-white">Nama Alat:</label>
                     <input type="text" id="edit-nama" class="form-control mb-3" value="${alat.nama}">
-                    <label class="small text-white">Jumlah Stok:</label>
+                    <label class="small text-white">Jumlah Stok Total:</label>
                     <input type="number" id="edit-stok" class="form-control" value="${alat.stok}">
                 </div>
             `,
@@ -804,6 +901,7 @@
                 if (result.value.nama && !isNaN(result.value.stok)) {
                     dbAlat[i].nama = result.value.nama;
                     dbAlat[i].stok = result.value.stok;
+                    if (dbAlat[i].maintenance > dbAlat[i].stok) dbAlat[i].maintenance = 0;
                     save();
                     Swal.fire('Berhasil', 'Data alat diperbarui.', 'success');
                 } else {
@@ -911,10 +1009,26 @@
         }
         document.getElementById('accPetugasTable').innerHTML = foundP ? accH + "</tbody></table>" : "<p class='text-white small py-4 text-center'>Kosong</p>";
 
-        let aH = `<table class="table table-dark table-hover align-middle"><thead><tr><th>Nama Alat</th><th>Stok</th><th class="text-end">Opsi</th></tr></thead><tbody>`;
+        let aH = `<table class="table table-dark table-hover align-middle"><thead><tr><th>Nama Alat</th><th>Stok (Aktif/Maint)</th><th class="text-end">Opsi</th></tr></thead><tbody>`;
         dbAlat.forEach(i => {
-            aH += `<tr><td class="fw-bold text-white">${i.nama}</td><td><span class="badge bg-dark border text-white">${i.stok}</span></td>
+            let mQty = i.maintenance || 0;
+            let usageCount = logs.filter(l => l.namaAlat === i.nama).length;
+            let healthPercent = Math.max(0, 100 - (usageCount * 2)); 
+            let healthColor = healthPercent > 70 ? 'bg-success' : (healthPercent > 30 ? 'bg-warning' : 'bg-danger');
+
+            aH += `<tr>
+                <td>
+                    <div class="fw-bold text-white">${i.nama}</div>
+                    <div class="progress mt-1" style="height: 4px; width: 100px;">
+                        <div class="progress-bar ${healthColor}" style="width: ${healthPercent}%"></div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-dark border text-white">${i.stok - mQty}</span>
+                    ${mQty > 0 ? `<span class="badge bg-danger text-white">-${mQty} Perbaikan</span>` : ''}
+                </td>
                 <td class="text-end">
+                    <button onclick="manageMaintenance(${i.id})" class="btn btn-sm btn-outline-info border-0 me-1" title="Manajemen Perbaikan"><i class="bi bi-wrench-adjustable text-white"></i></button>
                     <button onclick="editAlat(${i.id})" class="btn btn-sm btn-outline-warning border-0 me-1"><i class="bi bi-pencil-square text-white"></i></button>
                     <button onclick="deleteAlat(${i.id})" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash text-white"></i></button>
                 </td></tr>`;
@@ -922,7 +1036,7 @@
         document.getElementById('adminTable').innerHTML = aH + `</tbody></table>`;
 
         let mAdminH = `<table class="table table-sm" style="font-size: 0.85rem;">
-                        <thead><tr class="text-white"><th>User</th><th>Alat</th><th>Status</th><th>Deadline</th></tr></thead><tbody>`;
+                        <thead><tr class="text-white"><th>User & Kelas</th><th>Alat</th><th>Status</th><th>Deadline</th></tr></thead><tbody>`;
         let foundTrans = false;
         transaksi.forEach(t => {
             foundTrans = true;
@@ -937,17 +1051,23 @@
                 }
             }
 
-            mAdminH += `<tr><td class="text-white">${t.peminjam}</td><td class="text-white">${t.namaAlat}</td><td><span class="${statusClass}">${t.status}</span></td><td class="text-white">${deadlineStr}</td></tr>`;
+            mAdminH += `<tr>
+                <td class="text-white"><b>${t.peminjam}</b><br><small class="badge bg-secondary" style="font-size:0.65rem;">${t.kelasPeminjam || '-'}</small></td>
+                <td class="text-white">${t.namaAlat}</td>
+                <td><span class="${statusClass}">${t.status}</span></td>
+                <td class="text-white">${deadlineStr}</td>
+            </tr>`;
         });
         document.getElementById('adminMonitoringTable').innerHTML = foundTrans ? mAdminH + "</tbody></table>" : "<p class='text-white small text-center py-3'>Tidak ada data transaksi aktif.</p>";
 
         let pointAdminH = `<table class="table table-dark table-hover align-middle" style="font-size: 0.85rem;">
-            <thead><tr><th>Username</th><th>Role</th><th>Poin</th><th class="text-end">Aksi</th></tr></thead><tbody>`;
+            <thead><tr><th>Username</th><th>Kelas</th><th>Role</th><th>Poin</th><th class="text-end">Aksi</th></tr></thead><tbody>`;
         for (let u in users) {
             if (users[u].role !== 'Admin') {
                 let pColor = users[u].poin < 50 ? 'text-danger' : 'text-green';
                 pointAdminH += `<tr>
                     <td class="text-white">${u}</td>
+                    <td class="text-white-50">${users[u].kelas || '-'}</td>
                     <td><span class="badge bg-dark text-white border-secondary border">${users[u].role}</span></td>
                     <td><b class="${pColor}">${users[u].poin || 0}</b></td>
                     <td class="text-end">
@@ -960,54 +1080,109 @@
         }
         document.getElementById('adminPointTable').innerHTML = pointAdminH + "</tbody></table>";
 
-        let logH = `<table class="table table-sm" style="font-size: 0.75rem;"><thead><tr class="text-white"><th>User</th><th>Alat</th><th>Kondisi</th><th>Kembali</th></tr></thead><tbody>`;
+        let logH = `<table class="table table-sm" style="font-size: 0.75rem;"><thead><tr class="text-white"><th>Peminjam (Kelas)</th><th>Alat</th><th>Kondisi</th><th>Kembali</th></tr></thead><tbody>`;
         if (logs.length > 0) {
-            [...logs].reverse().slice(0, 10).forEach(l => {
-                logH += `<tr><td class="text-white">${l.peminjam}</td><td class="text-white">${l.namaAlat}</td><td class="text-yellow">${l.kondisi || 'Baik'}</td><td class="text-white">${l.waktuKembali}</td></tr>`;
+            [...logs].reverse().slice(0, 15).forEach(l => {
+                let infoKelas = users[l.peminjam] ? users[l.peminjam].kelas : (l.kelas || '-');
+                logH += `<tr>
+                    <td class="text-white"><b>${l.peminjam}</b><br><span class="text-white-50" style="font-size: 0.65rem;">${infoKelas}</span></td>
+                    <td class="text-white">${l.namaAlat} (${l.jumlah})</td>
+                    <td class="text-yellow">${l.kondisi || 'Baik'}</td>
+                    <td class="text-white">${l.waktuKembali}</td>
+                </tr>`;
             });
             document.getElementById('historyTable').innerHTML = logH + "</tbody></table>";
         } else {
-            document.getElementById('historyTable').innerHTML = "<p class='text-white small'>Belum ada riwayat.</p>";
+            document.getElementById('historyTable').innerHTML = "<p class='text-white small text-center py-3'>Belum ada riwayat.</p>";
         }
 
-        let pH = `<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Keperluan</th><th>Jml</th><th class="text-center">Aksi</th></tr></thead><tbody>`;
+        let pH = `
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr class="text-yellow">
+                        <th>Aktivitas & Peminjam</th>
+                        <th class="text-center">Jumlah</th>
+                        <th class="text-center">Detail Kondisi</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
         let countAntre = 0;
         transaksi.forEach(t => {
             if (t.status === "Menunggu Persetujuan") {
                 countAntre++;
-                pH += `<tr>
-                    <td><span class="badge bg-warning text-dark me-2">PINJAM</span><b class="text-white">${t.namaAlat}</b><br><small class="text-white">Oleh: ${t.peminjam}</small></td>
-                    <td class="text-white">${t.jumlah}</td>
+                pH += `
+                <tr>
+                    <td>
+                        <span class="badge bg-warning text-dark me-2">PERMINTAAN PINJAM</span><br>
+                        <b class="text-white">${t.namaAlat}</b><br>
+                        <small class="text-white-50">Oleh: ${t.peminjam} [${t.kelasPeminjam || '-'}]</small>
+                    </td>
                     <td class="text-center">
-                        <button onclick="setujuPinjam(${t.idTrans})" class="btn btn-success btn-sm rounded-pill px-3 text-white">Setuju</button>
-                        <button onclick="tolakPeminjaman(${t.idTrans})" class="btn btn-outline-danger btn-sm rounded-pill ms-1 text-white">Tolak</button>
-                    </td></tr>`;
+                        <span class="h5 fw-bold text-white">${t.jumlah}</span><br><small class="text-white-50">Unit</small>
+                    </td>
+                    <td class="text-center">
+                        <span class="status-badge-outline text-yellow">Cek Kondisi Fisik Alat</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group-vertical btn-group-sm">
+                            <button onclick="setujuPinjam(${t.idTrans})" class="btn btn-success rounded-pill px-3 text-white mb-1">
+                                <i class="bi bi-check2-circle me-1"></i>Setujui
+                            </button>
+                            <button onclick="tolakPeminjaman(${t.idTrans})" class="btn btn-outline-danger rounded-pill text-white">Tolak</button>
+                        </div>
+                    </td>
+                </tr>`;
             } else if (t.status === "Menunggu Pengembalian") {
                 countAntre++;
-                pH += `<tr>
-                    <td><span class="badge bg-info text-dark me-2">KEMBALI</span><b class="text-white">${t.namaAlat}</b><br>
-                        <small class="text-yellow">Kondisi Balik: ${t.kondisiAkhir}</small>
+                let isLate = t.deadline && now > t.deadline;
+                let deadlineInfo = isLate ? '<span class="badge bg-danger ms-1">TERLAMBAT</span>' : '';
+
+                pH += `
+                <tr>
+                    <td>
+                        <span class="badge bg-info text-dark me-2">PROSES KEMBALI</span>${deadlineInfo}<br>
+                        <b class="text-white">${t.namaAlat}</b><br>
+                        <small class="text-white-50">Peminjam: ${t.peminjam}</small>
                     </td>
-                    <td class="text-white"><span class="text-info fw-bold">${t.jumlahProsesKembali}</span><small>/${t.jumlah}</small></td>
                     <td class="text-center">
-                        <button onclick="setujuBalik(${t.idTrans})" class="btn btn-primary btn-sm rounded-pill px-4 text-white">Verifikasi & Terima</button>
-                    </td></tr>`;
+                        <div class="text-white">
+                            <span class="text-info h5 fw-bold">${t.jumlahProsesKembali}</span>
+                            <small class="text-white-50">/${t.jumlah} Unit</small>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <div class="small text-white-50">Keluar: <span class="text-white">${t.kondisiAwal || 'Baik'}</span></div>
+                        <div class="small text-white-50">Balik: <span class="text-yellow fw-bold">${t.kondisiAkhir}</span></div>
+                    </td>
+                    <td class="text-center">
+                        <button onclick="setujuBalik(${t.idTrans})" class="btn btn-primary btn-sm rounded-pill px-4 text-white">
+                            <i class="bi bi-shield-check me-1"></i>Verifikasi & Terima
+                        </button>
+                    </td>
+                </tr>`;
             }
         });
         document.getElementById('petugasList').innerHTML = countAntre > 0 ? pH + "</tbody></table></div>" : "<div class='text-center py-5 text-white'><i class='bi bi-check2-all d-block mb-2' style='font-size: 2rem;'></i>Semua tugas selesai!</div>";
 
         let uH = "";
         dbAlat.forEach(i => {
-            let stokStatus = i.stok > 5 ? 'bg-success' : (i.stok > 0 ? 'bg-warning text-dark' : 'bg-danger');
+            let mQty = i.maintenance || 0;
+            let stokTersedia = i.stok - mQty;
+            let stokStatus = stokTersedia > 5 ? 'bg-success' : (stokTersedia > 0 ? 'bg-warning text-dark' : 'bg-danger');
+            
             uH += `<div class="col-6 col-md-4 col-lg-3 mb-4"><div class="glass-card h-100 text-center d-flex flex-column">
                 <div class="mb-3"><i class="bi bi-tools text-yellow" style="font-size: 2rem;"></i></div>
                 <h5 class="fw-bold mb-1 text-white">${i.nama}</h5>
-                <div class="badge rounded-pill ${stokStatus} mb-3" style="font-size: 0.7rem;">
-                    ${i.stok > 0 ? 'Tersedia: ' + i.stok : 'Stok Habis'}
+                <div class="badge rounded-pill ${stokStatus} mb-1" style="font-size: 0.7rem;">
+                    ${stokTersedia > 0 ? 'Tersedia: ' + stokTersedia : 'Stok Habis'}
                 </div>
+                ${mQty > 0 ? `<div class="text-danger mb-2" style="font-size: 0.65rem;">(${mQty} unit sedang diservis)</div>` : '<div class="mb-2"></div>'}
                 <div class="mt-auto">
-                    ${i.stok > 0 ? `
-                        <input type="number" id="jml-${i.id}" class="form-control form-control-sm text-center mb-2" value="1" min="1" max="${i.stok}">
+                    ${stokTersedia > 0 ? `
+                        <input type="number" id="jml-${i.id}" class="form-control form-control-sm text-center mb-2" value="1" min="1" max="${stokTersedia}">
                         <button onclick="pinjam(${i.id})" class="btn btn-modern btn-sm w-100">Pinjam</button>
                     ` : `<button disabled class="btn btn-dark btn-sm w-100 opacity-50 text-white">Tidak Tersedia</button>`}
                 </div>
@@ -1043,19 +1218,21 @@
     function updateAdvancedStats() {
         const container = document.getElementById('admin-detail-stat-container');
         if (!container || !currentUser || users[currentUser].role !== 'Admin') return;
+        
         const ringkasanAlat = {};
         transaksi.forEach(t => {
             if (t.status === 'Dipinjam') {
-                if (!ringkasanAlat[t.namaAlat]) ringkasanAlat[t.namaAlat] = { total: 0, orang: [] };
+                if (!ringkasanAlat[t.namaAlat]) ringkasanAlat[t.namaAlat] = { total: 0, rincian: [] };
                 ringkasanAlat[t.namaAlat].total += t.jumlah;
-                ringkasanAlat[t.namaAlat].orang.push(`${t.peminjam} (${t.jumlah})`);
+                ringkasanAlat[t.namaAlat].rincian.push(`${t.peminjam} (${t.kelasPeminjam || '-'}) [${t.jumlah}]`);
             }
         });
-        let html = `<div class="glass-card mt-4"><h6 class="text-green mb-3"><i class="bi bi-box-arrow-up me-2"></i>Rincian Alat di Lapangan</h6><div class="table-responsive"><table class="table table-sm" style="font-size: 0.8rem;"><thead><tr class="text-white"><th>Nama Alat</th><th>Total Keluar</th><th>Peminjam (Qty)</th></tr></thead><tbody>`;
+        
+        let html = `<div class="glass-card mt-4"><h6 class="text-green mb-3"><i class="bi bi-box-arrow-up me-2"></i>Rincian Alat di Lapangan</h6><div class="table-responsive"><table class="table table-sm" style="font-size: 0.8rem;"><thead><tr class="text-white"><th>Nama Alat</th><th>Total Keluar</th><th>Peminjam (Kelas) [Qty]</th></tr></thead><tbody>`;
         const keys = Object.keys(ringkasanAlat);
         if (keys.length > 0) {
             keys.forEach(nama => {
-                html += `<tr><td class="fw-bold text-yellow">${nama}</td><td class="fw-bold text-white">${ringkasanAlat[nama].total} Unit</td><td><small class="text-white">${ringkasanAlat[nama].orang.join(", ")}</small></td></tr>`;
+                html += `<tr><td class="fw-bold text-yellow">${nama}</td><td class="fw-bold text-white">${ringkasanAlat[nama].total} Unit</td><td><small class="text-white">${ringkasanAlat[nama].rincian.join(", ")}</small></td></tr>`;
             });
         } else {
             html += `<tr><td colspan="3" class="text-center text-white py-3">Belum ada alat praktikum yang keluar.</td></tr>`;
@@ -1067,9 +1244,7 @@
         render();
         updateChart();
     };
-</script>
 
-<script>
 (function() {
     const injectAnnouncement = () => {
         const userSection = document.getElementById('peminjam-section');
@@ -1164,4 +1339,4 @@
 </script>
 
 </body>
-  </html>
+        </html>
